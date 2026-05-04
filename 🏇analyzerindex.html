@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>競馬予想Analyzer +指数加点版</title>
+<style>
+/* 既存のスタイルを継承しつつ、入力エリアを3列に対応 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Bebas+Neue&display=swap');
+:root{--bg:#07070d;--s1:#0f0f18;--s2:#171724;--bd:#252538;--acc:#d4a843;--red:#c94f4f;--blue:#4a8fd4;--txt:#dddde8;--sub:#666688;--hon:#d4a843;--tai:#4a8fd4;--tan:#c94f4f;--del:#44445a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif;min-height:100vh;}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 14px;}
+.hd{padding:22px 0 16px;border-bottom:1px solid var(--bd);margin-bottom:22px;text-align:center;}
+.hd h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:5px;color:var(--acc);}
+.hd p{font-size:11px;color:var(--sub);letter-spacing:2px;margin-top:4px;}
+/* 入力エリアを3列に変更 */
+.input-area{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+@media(max-width:800px){.input-area{grid-template-columns:1fr;}}
+.paste-block{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;}
+.paste-label{font-size:10px;letter-spacing:3px;color:var(--acc);text-transform:uppercase;margin-bottom:6px;display:block;}
+.paste-sub{font-size:10px;color:#44445a;margin-bottom:8px;line-height:1.6;display:block;}
+textarea{width:100%;height:180px;background:var(--s2);border:1px solid var(--bd);border-radius:5px;color:var(--txt);font-family:'Noto Sans JP',sans-serif;font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.7;transition:border-color .2s;}
+textarea:focus{border-color:var(--acc);}
+.run-btn{display:block;width:100%;padding:15px;background:var(--acc);border:none;border-radius:7px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;color:#000;cursor:pointer;transition:all .2s;margin-bottom:10px;}
+.run-btn:hover{background:#e8c060;}
+.clear-btn{display:block;width:100%;padding:9px;margin-bottom:20px;background:none;border:1px solid var(--bd);border-radius:6px;color:var(--sub);font-size:12px;cursor:pointer;transition:all .2s;}
+.result{display:none;}.result.show{display:block;}
+.sec{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:18px;margin-bottom:14px;}
+.sec-t{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--acc);border-bottom:1px solid var(--bd);padding-bottom:8px;margin-bottom:14px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--s2);color:var(--sub);padding:7px 8px;font-size:10px;border-bottom:1px solid var(--bd);}
+td{padding:9px 8px;border-bottom:1px solid var(--bd);vertical-align:middle;}
+.tc{text-align:center;}.tl{text-align:left;}
+.bar-w{height:4px;background:var(--bd);border-radius:2px;margin-top:3px;overflow:hidden;}
+.bar-f{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--acc),var(--red));}
+.tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;}
+.tag{font-size:10px;background:var(--s2);border:1px solid var(--bd);border-radius:2px;padding:1px 5px;color:var(--sub);}
+.wc{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;flex-shrink:0;}
+.w1{background:#fff;color:#000;}.w2{background:#222;color:#fff;}.w3{background:#c0392b;color:#fff;}.w4{background:#2471a3;color:#fff;}.w5{background:#d4ac0d;color:#000;}.w6{background:#1e8449;color:#fff;}.w7{background:#d35400;color:#fff;}.w8{background:#c0185a;color:#fff;}
+.mark-cell{font-family:'Bebas Neue',sans-serif;font-size:26px;text-align:center;}
+.score-cell{font-family:'Bebas Neue',sans-serif;font-size:22px;text-align:center;}
+.parse-log{background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:10px;font-size:11px;color:var(--sub);max-height:180px;overflow-y:auto;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hd">
+  <h1>競馬予想Analyzer</h1>
+  <p>PASTE &amp; ANALYZE — 指数加点モデル</p>
+</div>
+<div class="input-area">
+  <div class="paste-block">
+    <span class="paste-label">① 出走馬データ</span>
+    <textarea id="oddsText" placeholder="netkeibaのテキストを貼り付け"></textarea>
+  </div>
+  <div class="paste-block">
+    <span class="paste-label">② コースデータ</span>
+    <textarea id="dataText" placeholder="有利枠・得意騎手などを貼り付け"></textarea>
+  </div>
+  <div class="paste-block">
+    <span class="paste-label">③ 指数データ</span>
+    <textarea id="indexText" placeholder="最高・距離・コース・前走指数を貼り付け"></textarea>
+  </div>
+</div>
+<button class="run-btn" onclick="analyze()">► 集計して予想を出す</button>
+<button class="clear-btn" onclick="clearAll()">✕ クリア</button>
+<div class="result" id="result"></div>
+</div>
+
+<script>
+// 既存の基本関数を継承
+function buildWakuMap(n){
+  var map={};if(n<=8){for(var i=1;i<=n;i++)map[i]=i;return map;}
+  var extra=n-8,single=8-extra,h=1;
+  for(var w=1;w<=8;w++){if(w<=single){map[h++]=w;}else{map[h++]=w;map[h++]=w;}}
+  return map;
+}
+function normStr(s){return s ? s.replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).replace(/[\s　・－-]/g,"").toLowerCase() : "";}
+function nmatch(a,b){if(!a||!b)return false; var na=normStr(a),nb=normStr(b); return na.indexOf(nb)>=0||nb.indexOf(na)>=0;}
+
+// --- 指数データ解析エンジン ---
+function parseIndices(raw) {
+  var lines = raw.split("\n").filter(l => l.trim().length > 0);
+  var data = [];
+  lines.forEach(line => {
+    var parts = line.split(/\t|\s{2,}/);
+    if (parts.length >= 6 && /^\d+$/.test(parts[0])) {
+      var num = parseInt(parts[0]);
+      var vals = parts.slice(2).map(v => parseInt(v.replace(/[^\d-]/g, "")) || 0);
+      data.push({ num: num, saiko: vals[0], kyori: vals[2], course: vals[3], zenso: vals[6] });
+    }
+  });
+  
+  var top3 = { saiko: [], kyori: [], course: [], zenso: [] };
+  if (data.length === 0) return top3;
+
+  ["saiko", "kyori", "course", "zenso"].forEach(key => {
+    top3[key] = data.slice().sort((a, b) => b[key] - a[key]).slice(0, 3).map(h => h.num);
+  });
+  return top3;
+}
+
+// 既存の馬・コース解析を継承し指数を統合
+function parseHorses(raw){
+  var lines=raw.split("\n").map(l => l.trim());
+  var blocks=[]; var i=0;
+  while(i<lines.length){
+    if(/^[1-9]\d?$/.test(lines[i])){
+      var j=i+1; while(j<lines.length && lines[j]==="") j++;
+      if(j<lines.length && lines[j]==="--"){
+        var block=[]; var k=j+1;
+        while(k<lines.length){
+          if(/^[1-9]\d?$/.test(lines[k])){
+            var k2=k+1; while(k2<lines.length && lines[k2]==="") k2++;
+            if(k2<lines.length && lines[k2]==="--") break;
+          }
+          block.push(lines[k]); k++;
+        }
+        blocks.push({num:parseInt(lines[i]),lines:block}); i=k; continue;
+      }
+    }
+    i++;
+  }
+  return blocks.map(b => {
+    var all=b.lines.filter(l => l.length>0);
+    var name=b.num+"番", tan=0, ninki=0, jockey="", trainer="", sire="", damSire="";
+    var dbIdx=all.findIndex(l => l.includes("のデータベース"));
+    if(dbIdx>=0){ sire=all[dbIdx+1]; name=all[dbIdx+2]; }
+    all.forEach(l => {
+      var m=l.match(/^([\d.]+)\s*\((\d+)人気\)/); if(m){ tan=parseFloat(m[1]); ninki=parseInt(m[2]); }
+      var tm=l.match(/^([栗美船大川浦金名園姫高笠岐福帯岡山][東川崎和埼玉山部]?)\・(.+)/); if(tm) trainer=tm[2].split(/\s/)[0];
+    });
+    var jIdx=all.findIndex(l => /^\d+\.\d$/.test(l) || l==="初騎乗");
+    if(jIdx>0) jockey=all[jIdx-1].replace(/^[▲△◇★☆◎○]/,"").trim();
+    return {num:b.num, name:name, tan:tan, ninki:ninki, jockey:jockey, trainer:trainer, sire:sire};
+  });
+}
+
+function analyze(){
+  var oddsRaw=document.getElementById("oddsText").value;
+  var dataRaw=document.getElementById("dataText").value;
+  var indexRaw=document.getElementById("indexText").value;
+  var resEl=document.getElementById("result");
+  if(!oddsRaw) return;
+
+  var horses=parseHorses(oddsRaw);
+  var wakuMap=buildWakuMap(horses.length);
+  horses.forEach(h => h.waku=wakuMap[h.num]);
+  
+  var topIndices = parseIndices(indexRaw);
+  var scores={}; horses.forEach(h => scores[h.num]={total:0,tags:[]});
+
+  function add(n,t){ if(scores[n]){ scores[n].total++; scores[n].tags.push(t); }}
+
+  // 指数加点
+  topIndices.saiko.forEach(n => add(n, "最高指数上位"));
+  topIndices.kyori.forEach(n => add(n, "距離指数上位"));
+  topIndices.course.forEach(n => add(n, "コース指数上位"));
+  topIndices.zenso.forEach(n => add(n, "前走指数上位"));
+
+  // 既存のコースデータ簡易解析（必要に応じて拡張）
+  var cLines = dataRaw.split("\n");
+  cLines.forEach(l => {
+    horses.forEach(h => {
+      if(l.includes(h.num+"番") || nmatch(h.name, l)) add(h.num, "データ注目");
+    });
+  });
+
+  var sorted=horses.slice().sort((a,b)=>scores[b.num].total - scores[a.num].total);
+  var MD=["◎","○","▲","▲","△","△","△"];
+  var rows="";
+  sorted.forEach((h,idx) => {
+    var s=scores[h.num];
+    var mark = s.total >= 2 ? MD[Math.min(idx, 6)] : "-";
+    var col = s.total >= 3 ? "var(--acc)" : (s.total >= 1 ? "var(--blue)" : "var(--del)");
+    rows += `<tr>
+      <td class="tc mark-cell" style="color:${s.total>=2?'var(--hon)':'var(--del)'}">${mark}</td>
+      <td class="tc"><div class="wc w${h.waku}">${h.num}</div></td>
+      <td class="tl">
+        <div style="font-weight:700">${h.name}</div>
+        <div style="font-size:10px;color:var(--sub)">${h.jockey} / ${h.sire}</div>
+        <div class="tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join("")}</div>
+      </td>
+      <td class="tc score-cell" style="color:${col}">${s.total}</td>
+      <td class="tc">${h.tan||"-"}</td>
+    </tr>`;
+  });
+
+  resEl.innerHTML = `<div class="sec"><div class="sec-t">予想印 / 指数加点集計</div>
+    <table><thead><tr><th>印</th><th>馬番</th><th>馬名</th><th>点数</th><th>単勝</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+  resEl.className="result show";
+}
+function clearAll(){ document.getElementById("oddsText").value=""; document.getElementById("dataText").value=""; document.getElementById("indexText").value=""; document.getElementById("result").className="result"; }
+</script>
+</body>
+</html>
